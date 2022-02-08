@@ -7,9 +7,8 @@ const pool = new Pool({
   user: 'labber',
   password: 'labber',
   host: 'localhost',
-  database: 'lightbnb'
+  database: 'lightbnb',
 });
-
 
 /// Users
 
@@ -20,12 +19,12 @@ const pool = new Pool({
  */
 const getUserWithEmail = function(email) {
   return pool
-    .query(`SELECT * FROM users WHERE email = $1;`, [email])
+    .query('SELECT * FROM users WHERE email = $1;', [email])
     .then((result) => result.rows[0])
     .catch((err) => {
       console.log(err.message);
     });
-}
+};
 exports.getUserWithEmail = getUserWithEmail;
 
 /**
@@ -35,14 +34,13 @@ exports.getUserWithEmail = getUserWithEmail;
  */
 const getUserWithId = function(id) {
   return pool
-    .query(`SELECT * FROM users WHERE id = $1;`, [id])
+    .query('SELECT * FROM users WHERE id = $1;', [id])
     .then((result) => result.rows[0])
     .catch((err) => {
       console.log(err.message);
     });
-}
+};
 exports.getUserWithId = getUserWithId;
-
 
 /**
  * Add a new user to the database.
@@ -58,7 +56,7 @@ const addUser = function(user) {
     .catch((err) => {
       console.log(err.message);
     });
-}
+};
 exports.addUser = addUser;
 
 /// Reservations
@@ -70,12 +68,12 @@ exports.addUser = addUser;
  */
 const getAllReservations = function(guest_id, limit = 10) {
   return pool
-    .query(`SELECT * FROM reservations JOIN properties ON property_id = properties.id WHERE guest_id = $1 LIMIT $2`, [guest_id, limit])
+    .query('SELECT * FROM reservations JOIN properties ON property_id = properties.id WHERE guest_id = $1 LIMIT $2', [guest_id, limit])
     .then((result) => result.rows)
     .catch((err) => {
       console.log(err.message);
     });
-}
+};
 exports.getAllReservations = getAllReservations;
 
 /// Properties
@@ -87,7 +85,6 @@ exports.getAllReservations = getAllReservations;
  * @return {Promise<[{}]>}  A promise to the properties.
  */
 const getAllProperties = (options, limit = 10) => {
-
   // 1
   const queryParams = [];
   // 2
@@ -103,7 +100,7 @@ const getAllProperties = (options, limit = 10) => {
     queryString += `AND city LIKE $${queryParams.length} `;
   }
 
-  //3.2 filter by logged in user
+  // 3.2 filter by logged in user
   if (options.owner_id) {
     queryParams.push(options.owner_id);
     queryString += `AND owner_id = $${queryParams.length} `;
@@ -118,12 +115,11 @@ const getAllProperties = (options, limit = 10) => {
     queryString += `AND cost_per_night <= $${queryParams.length} `;
   }
 
-
   // 4
 
   queryString += `
   GROUP BY properties.id
-  `
+  `;
   // 4.1 minimum_rating
   if (options.minimum_rating) {
     queryParams.push(options.minimum_rating);
@@ -146,16 +142,25 @@ const getAllProperties = (options, limit = 10) => {
 };
 exports.getAllProperties = getAllProperties;
 
-
 /**
  * Add a property to the database
  * @param {{}} property An object containing all of the property details.
  * @return {Promise<{}>} A promise to the property.
  */
 const addProperty = function(property) {
-  const propertyId = Object.keys(properties).length + 1;
-  property.id = propertyId;
-  properties[propertyId] = property;
-  return Promise.resolve(property);
-}
+  // const propertyId = Object.keys(properties).length + 1;
+  // property.id = propertyId;
+  // properties[propertyId] = property;
+  // return Promise.resolve(property);
+
+  const propKeys = Object.keys(property);
+  const queryParams = Object.values(property);
+  const tokenList = queryParams.map((x, i) => `$${++i}`).toString();
+  const queryString = `
+  INSERT INTO properties (${propKeys.toString()}) VALUES (${tokenList}) RETURNING *`;
+  return pool
+    .query(queryString, queryParams)
+    .then((res) => res.rows[0])
+    .catch((err) => err);
+};
 exports.addProperty = addProperty;
